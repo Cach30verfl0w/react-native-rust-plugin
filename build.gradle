@@ -1,0 +1,46 @@
+buildscript {
+    def config = new Properties()
+    file('gradle.properties').withInputStream(config.&load)
+    project.ext.config = config
+
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'java-gradle-plugin'
+apply plugin: 'maven-publish'
+
+archivesBaseName = config.project_id
+group = config.project_group
+version = config.project_version
+sourceCompatibility = config.java_version
+targetCompatibility = config.java_version
+
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation group: 'org.jetbrains', name: 'annotations', version: config.annotations_version
+    implementation group: 'org.antlr', name: 'antlr4-runtime', version: config.antlr_version
+}
+
+gradlePlugin {
+    plugins {
+        reactNativeRustPlugin {
+            id = "${config.project_group}.${config.project_id}"
+            implementationClass = "${config.project_group}.reactnativerustplugin.ReactNativeRustPlugin"
+        }
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    sourceCompatibility = config.java_version
+    targetCompatibility = config.java_version
+}
