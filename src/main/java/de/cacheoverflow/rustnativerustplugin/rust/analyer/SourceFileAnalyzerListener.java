@@ -12,10 +12,18 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
     private final List<String> attributeCache = new ArrayList<>();
     private final List<RustFunction> functions;
     private final List<RustStruct> structures;
+    private final List<String> imports;
 
-    public SourceFileAnalyzerListener(@NotNull final List<RustFunction> functions, @NotNull final List<RustStruct> structures) {
+    public SourceFileAnalyzerListener(@NotNull final List<RustFunction> functions,
+                                      @NotNull final List<RustStruct> structures, @NotNull final List<String> imports) {
         this.functions = functions;
         this.structures = structures;
+        this.imports = imports;
+    }
+
+    @Override
+    public void enterUseDeclaration(RustParser.UseDeclarationContext context) {
+        this.imports.add(context.useTree().getText());
     }
 
     @Override
@@ -53,8 +61,8 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
     }
 
     @Override
-    public void enterOuterAttribute(RustParser.OuterAttributeContext attributeContext) {
-        this.attributeCache.add(attributeContext.attr().simplePath().getText());
+    public void enterOuterAttribute(RustParser.OuterAttributeContext context) {
+        this.attributeCache.add(context.attr().simplePath().getText());
     }
 
 }
