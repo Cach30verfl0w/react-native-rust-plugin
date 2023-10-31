@@ -8,4 +8,8 @@ public class CargoCompileException extends RuntimeException {
         super(String.format(message, arguments));
     }
 
+    public CargoCompileException(@NotNull final Throwable cause) {
+        super(cause);
+    }
+
 }

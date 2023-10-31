@@ -20,6 +20,7 @@ public class PluginBaseExtension {
     private final List<Path> moduleFolders = new ArrayList<>();
     private final Property<String> basePackage;
     private final Property<String> rustBaseFolder;
+    private final Property<Byte> androidApiVersion;
     private final RegularFileProperty cargoFile;
     private final DirectoryProperty ndkFolder;
     private final Path projectFolder;
@@ -31,6 +32,7 @@ public class PluginBaseExtension {
         this.rustBaseFolder = objectFactory.property(String.class);
         this.ndkFolder = objectFactory.directoryProperty();
         this.cargoFile = objectFactory.fileProperty();
+        this.androidApiVersion = objectFactory.property(Byte.class);
 
         Optional.ofNullable(System.getenv("NDK_HOME")).ifPresent(path -> this.ndkFolder.set(new File(path)));
         PathHelper.findFileInPath("cargo").ifPresent(path -> this.cargoFile.set(path.toFile()));
@@ -43,6 +45,10 @@ public class PluginBaseExtension {
 
     public @NotNull RegularFileProperty getCargoFile() {
         return this.cargoFile;
+    }
+
+    public @NotNull Property<Byte> getAndroidApiVersion() {
+        return this.androidApiVersion;
     }
 
     public @NotNull Property<String> getRustBaseFolder() {

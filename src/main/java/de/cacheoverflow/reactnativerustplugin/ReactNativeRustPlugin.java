@@ -25,6 +25,7 @@ public class ReactNativeRustPlugin implements Plugin<Project> {
             task.getCargoFile().set(extension.getCargoFile());
             task.getNdkFolder().set(extension.getNdkFolder());
             task.getModuleFolders().addAll(extension.getModuleFolders());
+            task.getAndroidApiVersion().set(extension.getAndroidApiVersion());
         });
     }
 
