@@ -2,6 +2,7 @@ package de.cacheoverflow.reactnativerustplugin.tasks;
 
 import de.cacheoverflow.reactnativerustplugin.exception.CargoCompileException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
+import de.cacheoverflow.reactnativerustplugin.utils.EnumAndroidTarget;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.file.DirectoryProperty;
@@ -25,6 +26,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class CargoCompileTask extends DefaultTask {
+
+    // TODO: Release mode
 
     private final List<Path> moduleFolders = new ArrayList<>();
     private final Property<Byte> androidApiVersion;
@@ -59,35 +62,33 @@ public class CargoCompileTask extends DefaultTask {
         // Build all projects
         this.getLogger().info("Building all imported Rust modules (Build Pass)");
         for (Path moduleFolder : this.moduleFolders) {
-            // Generate variables
-            String currentTarget = "x86_64-linux-android";
-            String linkerConfig = String.format("target.%s.linker=\"%s/%s%s-clang\"", currentTarget, binariesFolder.toAbsolutePath(),
-                    currentTarget, this.androidApiVersion.get());
+            for (EnumAndroidTarget androidTarget : EnumAndroidTarget.values()) {
+                this.getLogger().info("Building '{}' for '{}'", moduleFolder.getFileName().toString(),
+                        androidTarget.getTargetTriple());
 
-            // Generate process command string
-            StringBuilder commandBuilder = new StringBuilder(this.cargoFile.get().getAsFile().getAbsolutePath())
-                    .append(" build");
-            commandBuilder.append(" --config ").append(linkerConfig);
-            commandBuilder.append(" --target ").append(currentTarget);
+                // Generate command string
+                String commandBuilder = this.cargoFile.get().getAsFile().getAbsolutePath() + " build --target " +
+                        androidTarget.getTargetTriple() + " --config " + String.format("target.%s.linker=\"%s\"",
+                        androidTarget.getTargetTriple(), binariesFolder.resolve(androidTarget.getLinkerFunction()
+                                .apply(this.androidApiVersion.get())).toAbsolutePath());
 
-            // Generate Command Builder
-            this.getLogger().info("Running command '{}' in '{}'", commandBuilder, moduleFolder.toFile());
-            ProcessBuilder processBuilder = new ProcessBuilder();
-            processBuilder.command(commandBuilder.toString().split(" "));
-            processBuilder.directory(moduleFolder.toFile());
-            processBuilder.redirectErrorStream(true);
+                // Generate process builder
+                ProcessBuilder processBuilder = new ProcessBuilder(commandBuilder.split(" "));
+                processBuilder.directory(moduleFolder.toFile());
 
-            try {
-                Process process = processBuilder.start();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                int exitCode = process.waitFor();
-                if (exitCode != 0) {
-                    throw new CargoCompileException("Cargo Build Process for '%s' exited with exit code %s\n%s",
-                            moduleFolder.getFileName().toString(), exitCode, reader.lines().collect(Collectors.joining("\n")));
+                // Execute command
+                try {
+                    Process process = processBuilder.start();
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    int exitCode = process.waitFor();
+                    if (exitCode != 0) {
+                        throw new CargoCompileException("Cargo Build Process for '%s' exited with exit code %s\n%s",
+                                moduleFolder.getFileName().toString(), exitCode, reader.lines().collect(Collectors.joining("\n")));
 
+                    }
+                } catch (IOException | InterruptedException ex) {
+                    throw new CargoCompileException(ex);
                 }
-            } catch (IOException | InterruptedException ex) {
-                throw new CargoCompileException(ex);
             }
         }
     }
