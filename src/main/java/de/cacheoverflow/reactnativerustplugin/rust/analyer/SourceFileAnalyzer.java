@@ -2,6 +2,9 @@ package de.cacheoverflow.reactnativerustplugin.rust.analyer;
 
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerProjectException;
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFile;
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFunction;
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustStruct;
 import de.cacheoverflow.reactnativerustplugin.rust.parser.RustLexer;
 import de.cacheoverflow.reactnativerustplugin.rust.parser.RustParser;
 import org.antlr.v4.runtime.CharStreams;
@@ -13,15 +16,13 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class SourceFileAnalyzer {
 
-    // TODO: Validate structures and functions for child exportation
-    // TODO: Reconstruct functions and structures with module path information
+    // TODO: Implement Validation Pass with Type Table per Project
 
     private final List<RustFile> rustFiles = new ArrayList<>();
     private final Logger logger;
@@ -57,7 +58,7 @@ public class SourceFileAnalyzer {
                     continue;
 
                 // Check if file is a rust source file
-                if (!name.substring(name.lastIndexOf(".") + 1).equals(".rs"))
+                if (!name.substring(name.lastIndexOf(".") + 1).equals("rs"))
                     continue;
 
                 // Analyze single file
@@ -98,14 +99,50 @@ public class SourceFileAnalyzer {
         }
     }
 
+    public void reformatTypes() {
+        this.logger.info("Reformat types from pathless type declaration to path type declaration (Type Prepare Pass)");
+        for (RustFile file : this.rustFiles) {
+            for (RustStruct struct : file.structs()) {
+                this.logger.info("Modifying types in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
+                        .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
+                        .collect(Collectors.joining(", ")));
+
+                for (Map.Entry<String, String> parameter : struct.parameters().entrySet()) {
+                    if (!parameter.getValue().contains("::")) {
+                        String type = file.imports().stream()
+                                .map(importString -> new AbstractMap.SimpleEntry<>(importString.substring(importString
+                                        .lastIndexOf("::") + 2), importString))
+                                .filter(entry -> entry.getKey().equals(parameter.getValue()))
+                                .map(AbstractMap.SimpleEntry::getValue)
+                                .findFirst().orElse(parameter.getValue());
+                        struct.parameters().put(parameter.getKey(), type);
+                    }
+                }
+
+                this.logger.info("Finished type modification in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
+                        .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
+                        .collect(Collectors.joining(", ")));
+            }
+        }
+    }
+
+    public void validate() {
+
+    }
+
     private  @NotNull String getRustModulePath(@NotNull final Path sourceDirectory, @NotNull final Path child) {
-        Path modulePath = sourceDirectory.subpath(sourceDirectory.getNameCount(), child.getNameCount());
+        Path modulePath = child.subpath(sourceDirectory.getNameCount(), child.getNameCount());
         if (modulePath.getFileName().toString().equals("mod.rs")) {
             modulePath = modulePath.getParent();
         }
 
-        String modulePathString = modulePath.toString();
-        return modulePathString.substring(0, modulePathString.lastIndexOf("."));
+        if (modulePath.getFileName().toString().equals("lib.rs")) {
+            modulePath = modulePath.getParent();
+        }
+
+        String moduleString = (modulePath != null ? String.format("crate::%s", modulePath) : "crate");
+        return (moduleString.contains(".") ? moduleString.substring(0, moduleString.lastIndexOf(".")) : moduleString)
+                .replace("/", "::");
     }
 
     public @NotNull List<RustFile> getRustFiles() {

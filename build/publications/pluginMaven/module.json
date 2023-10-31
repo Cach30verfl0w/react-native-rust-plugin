@@ -27,11 +27,11 @@
         {
           "name": "react-native-rust-plugin-1.0.0.jar",
           "url": "react-native-rust-plugin-1.0.0.jar",
-          "size": 480606,
-          "sha512": "d4b10945b13f3502cd1c1a907d30b87f827ff231debe5960dfeb19c721dd5c144fe8bb324ed7638abb9df97fbd6390484312cd943dcbe7e369d9621ae882aa29",
-          "sha256": "b47bfa52d931f81699b40fef804eb204f024ce4e9ce62f54bc26a9877d864e2a",
-          "sha1": "2e56e678fa833312b3ab0504571c5fb1685a6d83",
-          "md5": "837967b04c4928e540532b4f34a18c96"
+          "size": 488253,
+          "sha512": "4e282eb01ab27c8b8e0723aa4789fb67c184e56d8d9ff038b334e1b8a630302a3e270a82e9e0e3d686510bfb26e9244d6d064954c580d1bec91c5bc4be58d165",
+          "sha256": "f8a0389c37f698054dbf205bc498e6f18f3211d086aadd55b1eec782a7145dfe",
+          "sha1": "e79489b4bfa1682e22f4f8f5a30a7ae95fd0a812",
+          "md5": "13c48bf7300a321b9bb30b3a84be4b4a"
         }
       ]
     },
@@ -64,11 +64,11 @@
         {
           "name": "react-native-rust-plugin-1.0.0.jar",
           "url": "react-native-rust-plugin-1.0.0.jar",
-          "size": 480606,
-          "sha512": "d4b10945b13f3502cd1c1a907d30b87f827ff231debe5960dfeb19c721dd5c144fe8bb324ed7638abb9df97fbd6390484312cd943dcbe7e369d9621ae882aa29",
-          "sha256": "b47bfa52d931f81699b40fef804eb204f024ce4e9ce62f54bc26a9877d864e2a",
-          "sha1": "2e56e678fa833312b3ab0504571c5fb1685a6d83",
-          "md5": "837967b04c4928e540532b4f34a18c96"
+          "size": 488253,
+          "sha512": "4e282eb01ab27c8b8e0723aa4789fb67c184e56d8d9ff038b334e1b8a630302a3e270a82e9e0e3d686510bfb26e9244d6d064954c580d1bec91c5bc4be58d165",
+          "sha256": "f8a0389c37f698054dbf205bc498e6f18f3211d086aadd55b1eec782a7145dfe",
+          "sha1": "e79489b4bfa1682e22f4f8f5a30a7ae95fd0a812",
+          "md5": "13c48bf7300a321b9bb30b3a84be4b4a"
         }
       ]
     }

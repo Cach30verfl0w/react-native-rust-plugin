@@ -1,6 +1,5 @@
 package de.cacheoverflow.reactnativerustplugin.utils;
 
-import org.gradle.internal.impldep.com.google.common.base.Preconditions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,9 +15,6 @@ public class NullableHelper {
     public static @NotNull <T> Optional<T> successOrElse(@NotNull final Supplier<T> operation,
                                                          @NotNull final Class<? extends Exception> exceptionClass,
                                                          @Nullable final T defaultValue) {
-        Preconditions.checkNotNull(operation);
-        Preconditions.checkNotNull(exceptionClass);
-
         try {
             return Optional.ofNullable(operation.get());
         } catch (Exception exception) {

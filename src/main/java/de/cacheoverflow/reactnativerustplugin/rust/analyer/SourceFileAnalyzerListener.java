@@ -1,5 +1,7 @@
 package de.cacheoverflow.reactnativerustplugin.rust.analyer;
 
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFunction;
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustStruct;
 import de.cacheoverflow.reactnativerustplugin.rust.parser.RustParser;
 import de.cacheoverflow.reactnativerustplugin.rust.parser.RustParserBaseListener;
 import de.cacheoverflow.reactnativerustplugin.utils.NullableHelper;

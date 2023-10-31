@@ -1,4 +1,4 @@
-package de.cacheoverflow.reactnativerustplugin.rust.analyer;
+package de.cacheoverflow.reactnativerustplugin.rust.analyer.data;
 
 import org.jetbrains.annotations.NotNull;
 
