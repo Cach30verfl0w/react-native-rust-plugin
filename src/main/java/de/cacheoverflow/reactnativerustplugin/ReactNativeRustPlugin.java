@@ -2,11 +2,14 @@ package de.cacheoverflow.reactnativerustplugin;
 
 import de.cacheoverflow.reactnativerustplugin.extension.PluginBaseExtension;
 import de.cacheoverflow.reactnativerustplugin.tasks.CargoCompileTask;
+import de.cacheoverflow.reactnativerustplugin.tasks.NativeBundleTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.ExtensionContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 public class ReactNativeRustPlugin implements Plugin<Project> {
 
@@ -26,6 +29,12 @@ public class ReactNativeRustPlugin implements Plugin<Project> {
             task.getNdkFolder().set(extension.getNdkFolder());
             task.getModuleFolders().addAll(extension.getModuleFolders());
             task.getAndroidApiVersion().set(extension.getAndroidApiVersion());
+        });
+
+        taskContainer.register("nativeBundle", NativeBundleTask.class, task -> {
+            task.setGroup(ReactNativeRustPlugin.TASK_GROUP);
+            task.setDependsOn(List.of("cargoCompile"));
+            task.getModuleFolders().addAll(extension.getModuleFolders());
         });
     }
 
