@@ -1,0 +1,76 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "de.cacheoverflow",
+    "module": "react-native-rust-plugin",
+    "version": "1.0.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 20,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "react-native-rust-plugin-1.0.0.jar",
+          "url": "react-native-rust-plugin-1.0.0.jar",
+          "size": 480606,
+          "sha512": "d4b10945b13f3502cd1c1a907d30b87f827ff231debe5960dfeb19c721dd5c144fe8bb324ed7638abb9df97fbd6390484312cd943dcbe7e369d9621ae882aa29",
+          "sha256": "b47bfa52d931f81699b40fef804eb204f024ce4e9ce62f54bc26a9877d864e2a",
+          "sha1": "2e56e678fa833312b3ab0504571c5fb1685a6d83",
+          "md5": "837967b04c4928e540532b4f34a18c96"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 20,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains",
+          "module": "annotations",
+          "version": {
+            "requires": "23.0.0"
+          }
+        },
+        {
+          "group": "org.antlr",
+          "module": "antlr4-runtime",
+          "version": {
+            "requires": "4.+"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "react-native-rust-plugin-1.0.0.jar",
+          "url": "react-native-rust-plugin-1.0.0.jar",
+          "size": 480606,
+          "sha512": "d4b10945b13f3502cd1c1a907d30b87f827ff231debe5960dfeb19c721dd5c144fe8bb324ed7638abb9df97fbd6390484312cd943dcbe7e369d9621ae882aa29",
+          "sha256": "b47bfa52d931f81699b40fef804eb204f024ce4e9ce62f54bc26a9877d864e2a",
+          "sha1": "2e56e678fa833312b3ab0504571c5fb1685a6d83",
+          "md5": "837967b04c4928e540532b4f34a18c96"
+        }
+      ]
+    }
+  ]
+}
