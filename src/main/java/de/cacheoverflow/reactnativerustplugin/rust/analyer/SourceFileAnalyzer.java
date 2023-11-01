@@ -117,26 +117,55 @@ public final class SourceFileAnalyzer {
         }
     }
 
+    public void renameStructs() {
+        this.logger.info("Rename structures from pathless struct names to path struct names (Struct Prepare Pass)");
+        for (RustProject project : this.projects) {
+            // Enumerate all files in project
+            for (RustFile file : project.files()) {
+                // Enumerate all structures in project, add path to name, clear structs list and insert new struct list
+                List<RustStruct> newRustStructs = new ArrayList<>();
+                for (RustStruct struct : file.structs()) {
+                    // Generate new structure name with path
+                    String structNameWithPath = String.format("%s::%s::%s", project.projectName().replace("-", ""),
+                            file.path(), struct.name());
+
+                    // Inform the user about the change and add structure to list
+                    this.logger.info("Modifying struct name from {} to {}", struct.name(), structNameWithPath);
+                    newRustStructs.add(new RustStruct(struct.attributes(), structNameWithPath, struct.parameters()));
+                }
+                file.structs().clear();
+                file.structs().addAll(newRustStructs);
+            }
+        }
+    }
+
     public void reformatTypes() {
-        this.logger.info("Reformat types from pathless type declaration to path type declaration (Type Prepare Pass)");
+        this.logger.info("Reformat types from pathless type declarations to path type declarations (Type Prepare Pass)");
         for (RustFile file : this.projects.stream().map(RustProject::files).flatMap(Collection::stream).toList()) {
             for (RustStruct struct : file.structs()) {
+                // Send information to user
                 this.logger.info("Modifying types in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
                         .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
                         .collect(Collectors.joining(", ")));
 
+                // Enumerate all parameters in struct
                 for (Map.Entry<String, String> parameter : struct.parameters().entrySet()) {
+                    // Only modify type name when name isn't already specified with path
                     if (!parameter.getValue().contains("::")) {
+                        // Generate type name with path
                         String type = file.imports().stream()
                                 .map(importString -> new AbstractMap.SimpleEntry<>(importString.substring(importString
                                         .lastIndexOf("::") + 2), importString))
                                 .filter(entry -> entry.getKey().equals(parameter.getValue()))
                                 .map(AbstractMap.SimpleEntry::getValue)
                                 .findFirst().orElse(parameter.getValue());
+
+                        // Replace type names with new type names
                         struct.parameters().put(parameter.getKey(), type);
                     }
                 }
 
+                // Send information to user
                 this.logger.info("Finished type modification in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
                         .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
                         .collect(Collectors.joining(", ")));

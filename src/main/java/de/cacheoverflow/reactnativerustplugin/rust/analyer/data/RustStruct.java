@@ -6,4 +6,5 @@ import java.util.List;
 import java.util.Map;
 
 public record RustStruct(@NotNull List<String> attributes, @NotNull String name,
-                         @NotNull Map<String, String> parameters) { }
+                         @NotNull Map<String, String> parameters) {
+}

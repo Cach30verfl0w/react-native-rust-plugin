@@ -21,28 +21,28 @@ public class NativeBundleTask extends DefaultTask {
 
     @TaskAction
     public void performTask() {
-        Path mainSourceSet = this.getProject().getProjectDir().toPath().resolve("src/main");
+        final Path mainSourceSet = this.getProject().getProjectDir().toPath().resolve("src/main");
         if (!Files.exists(mainSourceSet) || !Files.isDirectory(mainSourceSet))
             throw new GradleException(String.format("Directory '%s' doesn't exists", mainSourceSet.toAbsolutePath()));
 
-        Path mainSourceSetJniLibs = mainSourceSet.resolve("jniLibs");
+        final Path mainSourceSetJniLibs = mainSourceSet.resolve("jniLibs");
         PathHelper.createDirectoryIfNotExists(this.getProject(), mainSourceSetJniLibs);
 
-        for (Path moduleFolder : this.moduleFolders) {
-            for (EnumAndroidTarget target : EnumAndroidTarget.values()) {
-                Path targetLibraries = mainSourceSetJniLibs.resolve(target.getArchitecture());
+        for (final Path moduleFolder : this.moduleFolders) {
+            for (final EnumAndroidTarget target : EnumAndroidTarget.values()) {
+                final Path targetLibraries = mainSourceSetJniLibs.resolve(target.getArchitecture());
                 PathHelper.createDirectoryIfNotExists(this.getProject(), targetLibraries);
-                String fileName = moduleFolder.getFileName().toString().replace("-", "_");
+                final String fileName = moduleFolder.getFileName().toString().replace("-", "_");
 
                 // Check if module library file does exists
-                Path rustLibraryFile = moduleFolder.resolve(String.format("target/%s/debug", target.getTargetTriple()))
+                final Path rustLibraryFile = moduleFolder.resolve(String.format("target/%s/debug", target.getTargetTriple()))
                         .resolve(String.format("lib%s.so", fileName));
                 if (!Files.exists(rustLibraryFile) || !Files.isRegularFile(rustLibraryFile))
                     throw new GradleException(String.format("Unable to find file '%s': Add crate-type = " +
                             "[\"staticlib\", \"cdylib\"] and name attribute to your Cargo.toml", rustLibraryFile.toAbsolutePath()));
 
                 // Get path on Android project side
-                Path javaLibraryFile = targetLibraries.resolve(String.format("%s.so", fileName));
+                final Path javaLibraryFile = targetLibraries.resolve(String.format("%s.so", fileName));
                 PathHelper.createFileIfNotExists(this.getProject(), javaLibraryFile);
 
                 try {

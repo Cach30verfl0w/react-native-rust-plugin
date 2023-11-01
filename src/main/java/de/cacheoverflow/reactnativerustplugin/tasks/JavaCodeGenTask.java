@@ -31,21 +31,25 @@ public class JavaCodeGenTask extends DefaultTask {
     public void performTask() {
         // Analyze all rust projects
         this.getLogger().info("Analyzing all imported Rust modules (Analyzer Pass)");
-        SourceFileAnalyzer sourceFileAnalyzer = new SourceFileAnalyzer(this.getLogger());
+        final SourceFileAnalyzer sourceFileAnalyzer = new SourceFileAnalyzer(this.getLogger());
         for (Path moduleFolder : this.moduleFolders) {
             sourceFileAnalyzer.analyzeProject(moduleFolder);
         }
+        sourceFileAnalyzer.renameStructs();
         sourceFileAnalyzer.reformatTypes();
 
         this.getLogger().info("Generate Type Mappings");
-        TypeMapper typeMapper = new TypeMapper();
+        final TypeMapper typeMapper = new TypeMapper();
         for (RustProject project : sourceFileAnalyzer.getProjects()) {
-            for (RustFile file : project.files()) {
-                for (RustStruct struct : file.structs()) {
-
-                }
+            final var structs = project.files().stream().map(RustFile::structs).flatMap(Collection::stream).toList();
+            for (RustStruct struct : structs) {
+                String structPath = String.format("%s::%s", project.projectName().replace("-", "_"), struct.name());
+                typeMapper.registerIfNotExists(structPath, "" /* TODO: Java Class from Attribute */);
+                this.getLogger().info("Mapped {} to {}", struct, "" /* TODO: Java Class from Attribute */);
             }
         }
+
+        this.getLogger().info("Generate Java Structures from Rust structures");
     }
 
     @Input
