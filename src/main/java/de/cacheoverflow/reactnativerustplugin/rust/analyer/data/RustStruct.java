@@ -5,6 +5,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 import java.util.Map;
 
-public record RustStruct(@NotNull List<String> attributes, @NotNull String name,
+public record RustStruct(@NotNull List<RustAttribute> attributes, @NotNull String name,
                          @NotNull Map<String, String> parameters) {
 }

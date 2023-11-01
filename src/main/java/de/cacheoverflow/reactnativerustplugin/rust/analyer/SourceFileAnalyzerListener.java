@@ -1,5 +1,6 @@
 package de.cacheoverflow.reactnativerustplugin.rust.analyer;
 
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustAttribute;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFunction;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustStruct;
 import de.cacheoverflow.reactnativerustplugin.rust.parser.RustParser;
@@ -11,7 +12,7 @@ import java.util.*;
 
 public class SourceFileAnalyzerListener extends RustParserBaseListener {
 
-    private final List<String> attributeCache = new ArrayList<>();
+    private final List<RustAttribute> attributeCache = new ArrayList<>();
     private final List<RustFunction> functions;
     private final List<RustStruct> structures;
     private final List<String> imports;
@@ -64,7 +65,20 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
 
     @Override
     public void enterOuterAttribute(RustParser.OuterAttributeContext context) {
-        this.attributeCache.add(context.attr().simplePath().getText());
+        Map<String, String> parameters = new HashMap<>();
+        if (context.attr().attrInput() != null) {
+            for (RustParser.TokenTreeContext tokenTreeContext : context.attr().attrInput().delimTokenTree().tokenTree()) {
+                if (tokenTreeContext.tokenTreeToken().stream().noneMatch(current -> current.getText().equals("=")))
+                    continue;
+
+                if (tokenTreeContext.tokenTreeToken().size() != 3)
+                    continue;
+                
+                parameters.put(tokenTreeContext.tokenTreeToken().getFirst().getText(),
+                        tokenTreeContext.tokenTreeToken().getLast().getText());
+            }
+        }
+        this.attributeCache.add(new RustAttribute(context.attr().simplePath().getText(), parameters));
     }
 
 }
