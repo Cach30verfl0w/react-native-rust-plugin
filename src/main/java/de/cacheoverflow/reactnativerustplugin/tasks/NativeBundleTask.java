@@ -4,12 +4,10 @@ import de.cacheoverflow.reactnativerustplugin.utils.EnumAndroidTarget;
 import de.cacheoverflow.reactnativerustplugin.utils.PathHelper;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
-import org.gradle.api.Project;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.NotNull;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,10 +18,6 @@ import java.util.List;
 public class NativeBundleTask extends DefaultTask {
 
     private final List<Path> moduleFolders = new ArrayList<>();
-
-    @Inject
-    public NativeBundleTask(@NotNull final Project project) {
-    }
 
     @TaskAction
     public void performTask() {

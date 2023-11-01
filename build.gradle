@@ -28,6 +28,7 @@ dependencies {
     implementation gradleApi()
     implementation group: 'org.jetbrains', name: 'annotations', version: config.annotations_version
     implementation group: 'org.antlr', name: 'antlr4-runtime', version: config.antlr_version
+    implementation group: 'com.electronwill.night-config', name: 'toml', version: config.nightconfig_version
 }
 
 gradlePlugin {

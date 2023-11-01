@@ -1,7 +1,6 @@
 package de.cacheoverflow.reactnativerustplugin.tasks;
 
 import de.cacheoverflow.reactnativerustplugin.exception.CargoCompileException;
-import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
 import de.cacheoverflow.reactnativerustplugin.utils.EnumAndroidTarget;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -50,14 +49,6 @@ public class CargoCompileTask extends DefaultTask {
                 .resolve(String.format("toolchains/llvm/prebuilt/%s/bin", this.getSystemSpecificFolder()));
         if (!Files.exists(binariesFolder) || !Files.isDirectory(binariesFolder))
             throw new CargoCompileException("Binaries Folder in NDK doesn't exists!");
-
-        // Analyze all rust projects
-        this.getLogger().info("Analyzing all imported Rust modules (Analyzer Pass)");
-        SourceFileAnalyzer sourceFileAnalyzer = new SourceFileAnalyzer(this.getLogger());
-        for (Path moduleFolder : this.moduleFolders) {
-            sourceFileAnalyzer.analyzeDirectory(moduleFolder);
-        }
-        sourceFileAnalyzer.reformatTypes();
 
         // Build all projects
         this.getLogger().info("Building all imported Rust modules (Build Pass)");
