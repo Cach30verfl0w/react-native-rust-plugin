@@ -24,21 +24,21 @@ public class ReactNativeRustPlugin implements Plugin<Project> {
 
         // Tasks
         final TaskContainer taskContainer = project.getTasks();
+        taskContainer.register("javaCodeGen", JavaCodeGenTask.class, task -> {
+            task.setGroup(ReactNativeRustPlugin.TASK_GROUP);
+            task.getModuleFolders().addAll(extension.getModuleFolders());
+        });
+
         taskContainer.register("cargoCompile", CargoCompileTask.class, task -> {
             task.setGroup(ReactNativeRustPlugin.TASK_GROUP);
             task.getCargoFile().set(extension.getCargoFile());
             task.getNdkFolder().set(extension.getNdkFolder());
             task.getModuleFolders().addAll(extension.getModuleFolders());
             task.getAndroidApiVersion().set(extension.getAndroidApiVersion());
+            task.dependsOn("javaCodeGen");
         });
 
         taskContainer.register("nativeBundle", NativeBundleTask.class, task -> {
-            task.setGroup(ReactNativeRustPlugin.TASK_GROUP);
-            task.setDependsOn(List.of("cargoCompile"));
-            task.getModuleFolders().addAll(extension.getModuleFolders());
-        });
-
-        taskContainer.register("javaCodeGen", JavaCodeGenTask.class, task -> {
             task.setGroup(ReactNativeRustPlugin.TASK_GROUP);
             task.setDependsOn(List.of("cargoCompile"));
             task.getModuleFolders().addAll(extension.getModuleFolders());

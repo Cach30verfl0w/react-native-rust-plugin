@@ -126,8 +126,8 @@ public final class SourceFileAnalyzer {
                 List<RustStruct> newRustStructs = new ArrayList<>();
                 for (RustStruct struct : file.structs()) {
                     // Generate new structure name with path
-                    String structNameWithPath = String.format("%s::%s::%s", project.projectName().replace("-", ""),
-                            file.path(), struct.name());
+                    String structNameWithPath = String.format("%s::%s", file.path().replace("crate::", ""),
+                            struct.name());
 
                     // Inform the user about the change and add structure to list
                     this.logger.info("Modifying struct name from {} to {}", struct.name(), structNameWithPath);

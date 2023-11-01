@@ -44,7 +44,8 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
         }
 
         // Add function to list and clear attribute cache
-        this.functions.add(new RustFunction(this.attributeCache, context.identifier().getText(), parameters, returnType));
+        this.functions.add(new RustFunction(new ArrayList<>(this.attributeCache), context.identifier().getText(),
+                parameters, returnType));
         this.attributeCache.clear();
     }
 
@@ -59,7 +60,8 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
         }
 
         // Add struct to list and clear attribute cache
-        this.structures.add(new RustStruct(this.attributeCache, context.structStruct().identifier().getText(), parameters));
+        this.structures.add(new RustStruct(new ArrayList<>(this.attributeCache),
+                context.structStruct().identifier().getText(), parameters));
         this.attributeCache.clear();
     }
 
@@ -73,7 +75,7 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
 
                 if (tokenTreeContext.tokenTreeToken().size() != 3)
                     continue;
-                
+
                 parameters.put(tokenTreeContext.tokenTreeToken().getFirst().getText(),
                         tokenTreeContext.tokenTreeToken().getLast().getText());
             }
