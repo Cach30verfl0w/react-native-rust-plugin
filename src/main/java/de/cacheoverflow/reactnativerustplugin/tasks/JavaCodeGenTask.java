@@ -6,10 +6,7 @@ import de.cacheoverflow.reactnativerustplugin.codegen.TypeMapper;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
-import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustAttribute;
-import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFile;
-import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustProject;
-import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustStruct;
+import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.*;
 import de.cacheoverflow.reactnativerustplugin.utils.PathHelper;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -90,11 +87,13 @@ public class JavaCodeGenTask extends DefaultTask {
 
         // Generate Java classes from Struct structures
         this.getLogger().info("Generate Java classes from Rust structures");
+
         final Map<String, String> generatedClasses = new HashMap<>();
         for (final RustProject project : sourceFileAnalyzer.getProjects()) {
             // Enumerate all structs in project
             for (final RustStruct struct : project.files().stream().map(RustFile::structs).flatMap(Collection::stream)
                     .toList()) {
+
                 // Filter not exported structures
                 final RustAttribute exportAttribute = struct.attributes().stream()
                         .filter(attr -> attr.name().equals(JavaCodeGenTask.JNI_EXPORT_ATTR_NAME))
@@ -104,7 +103,7 @@ public class JavaCodeGenTask extends DefaultTask {
 
                 // Avoid collisions in class generation
                 final String className = exportAttribute.parameters().get("class").replace("\"", "");
-                if ( generatedClasses.containsKey(className))
+                if (generatedClasses.containsKey(className))
                     throw new CodeGenerationException("Unable to generate class '%s' => Class was already created", className);
 
                 // Generate class builder by struct
@@ -121,12 +120,32 @@ public class JavaCodeGenTask extends DefaultTask {
 
         // Inform the user about the generation and write generated classes to specified directories
         this.getLogger().info("Generated {} class as Wrapper for Rust structs", generatedClasses.size());
+
         for (final Map.Entry<String, String> classEntry : generatedClasses.entrySet()) {
             final Path classPath = generatedSourceFolder.resolve(String.format("%s.java", classEntry.getKey()
                     .replace(".", "/")));
             PathHelper.createDirectoryIfNotExists(this.getProject(), classPath.getParent());
             PathHelper.writeFile(classPath, classEntry.getValue());
             this.getLogger().info("Successfully wrote class '{}' into '{}'", classEntry.getKey(), classPath.toAbsolutePath());
+        }
+
+        // Generate package classes for mapping between Rust and Java functions
+        this.getLogger().info("Generate Rust mapping classes as React Native modules");
+
+        for (final RustProject project : sourceFileAnalyzer.getProjects()) {
+            // Enumerate all functions in project
+            for (final RustFunction function : project.files().stream().map(RustFile::functions)
+                    .flatMap(Collection::stream).toList()) {
+
+                // Filter not exported functions
+                final RustAttribute exportAttribute = function.attributes().stream()
+                        .filter(attr -> attr.name().equals(JavaCodeGenTask.JNI_EXPORT_ATTR_NAME))
+                        .findFirst().orElse(null);
+                if (exportAttribute == null)
+                    continue;
+
+                
+            }
         }
     }
 
