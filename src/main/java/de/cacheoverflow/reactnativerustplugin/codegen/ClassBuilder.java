@@ -5,12 +5,14 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 public class ClassBuilder {
 
-    private final StringBuilder internalClassBuilder = new StringBuilder();
-    private final Stack<EnumScopeType> scopeStack = new Stack<>();
+    final StringBuilder internalClassBuilder = new StringBuilder();
+    final Stack<EnumScopeType> scopeStack = new Stack<>();
+    final String className;
 
     public ClassBuilder(final int modifier, @NotNull final String name, @Nullable final String superClass,
                         @NotNull final List<String> interfaces) {
@@ -18,6 +20,7 @@ public class ClassBuilder {
         final int lastDotIndex = name.lastIndexOf('.');
         final String className = name.substring(lastDotIndex == -1 ? 0 : lastDotIndex + 1);
         final String packageString = name.substring(0, lastDotIndex == -1 ? 0 : lastDotIndex);
+        this.className = className;
 
         // Generate class string
         if (!packageString.trim().isEmpty()) {
@@ -39,20 +42,28 @@ public class ClassBuilder {
             this.internalClassBuilder.replace(length - 2, length, "");
         }
 
-        this.internalClassBuilder.append(" {\n");
+        this.internalClassBuilder.append(" {\n\n");
         this.pushScope(EnumScopeType.CLASS);
     }
 
     public void addField(final byte modifier, @NotNull final String name, @NotNull final String type) {
-        this.internalClassBuilder.repeat("   ", this.scopeStack.size());
-        this.pushScope(EnumScopeType.FIELD);
+        this.internalClassBuilder.repeat("    ", this.scopeStack.size());
         this.internalClassBuilder.append(Modifier.toString(modifier)).append(" ").append(type).append(" ").append(name)
-                .append(";\n");
-        this.popScope();
+                .append(";\n\n");
+    }
+
+    public @NotNull MethodBuilder addMethod(final int modifier, @NotNull final String name,
+                                            @NotNull final Map<String, String> parameter,
+                                            @Nullable final String returnType) {
+        return new MethodBuilder(this, modifier, name, parameter, returnType);
+    }
+
+    public @NotNull MethodBuilder addConstructor(final int modifier, @NotNull final Map<String, String> parameter) {
+        return new MethodBuilder(this, modifier, parameter);
     }
 
     public @NotNull String build() {
-        EnumScopeType scope = this.popScope();
+        final EnumScopeType scope = this.popScope();
         if (scope != EnumScopeType.CLASS) {
             throw new CodeGenerationException("Uncomplete code generation while build function. Scope should be " +
                     "class but is %s", scope);
@@ -61,29 +72,18 @@ public class ClassBuilder {
         return this.internalClassBuilder.toString();
     }
 
-    private void pushScope(@NotNull final EnumScopeType type) {
+    void pushScope(@NotNull final EnumScopeType type) {
         this.scopeStack.add(type);
     }
 
-    private @NotNull EnumScopeType popScope() {
-        EnumScopeType type = this.scopeStack.pop();
-        if (type.hasBody) {
-            this.internalClassBuilder.repeat("    ", this.scopeStack.size()).append("}");
-        }
-        return type;
+    @NotNull EnumScopeType popScope() {
+        this.internalClassBuilder.repeat("    ", this.scopeStack.size() - 1).append("}\n\n");
+        return this.scopeStack.pop();
     }
 
-    private enum EnumScopeType {
-        BODY_LESS_FUNCTION(false),
-        FUNCTION(true),
-        CLASS(true),
-        FIELD(false);
-
-        private final boolean hasBody;
-
-        EnumScopeType(final boolean hasBody) {
-            this.hasBody = hasBody;
-        }
+    enum EnumScopeType {
+        FUNCTION,
+        CLASS
     }
 
 }

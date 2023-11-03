@@ -1,8 +1,13 @@
 package de.cacheoverflow.reactnativerustplugin.tasks;
 
 import de.cacheoverflow.reactnativerustplugin.codegen.ClassBuilder;
+import de.cacheoverflow.reactnativerustplugin.codegen.MethodBuilder;
 import de.cacheoverflow.reactnativerustplugin.codegen.Modifier;
 import de.cacheoverflow.reactnativerustplugin.codegen.TypeMapper;
+import de.cacheoverflow.reactnativerustplugin.codegen.expressions.AssignmentExpression;
+import de.cacheoverflow.reactnativerustplugin.codegen.expressions.ReturnStatement;
+import de.cacheoverflow.reactnativerustplugin.codegen.expressions.ValueExpression;
+import de.cacheoverflow.reactnativerustplugin.codegen.expressions.VariableExpression;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
@@ -19,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class JavaCodeGenTask extends DefaultTask {
 
@@ -108,9 +114,28 @@ public class JavaCodeGenTask extends DefaultTask {
 
                 // Generate class builder by struct
                 final ClassBuilder classBuilder = new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className, null, List.of());
-                for (Map.Entry<String, String> field : struct.parameters().entrySet()) {
-                    classBuilder.addField(Modifier.PUBLIC, field.getKey(), typeMapper.map(field.getValue()));
-                }
+                final Map<String, String> mappedParameters = struct.parameters().entrySet().stream()
+                        .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), typeMapper.map(entry.getValue())))
+                        .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
+                mappedParameters.forEach((name, value) -> classBuilder.addField(Modifier.PUBLIC, name, value));
+
+                MethodBuilder methodBuilder = classBuilder.addConstructor(Modifier.PUBLIC, mappedParameters);
+                mappedParameters.forEach((name, value) -> methodBuilder.addStatement(new AssignmentExpression(
+                        new VariableExpression(name, true), new VariableExpression(name, false))));
+                methodBuilder.build();
+
+                mappedParameters.forEach((name, value) -> {
+                    classBuilder
+                            .addMethod(Modifier.PUBLIC, String.format("set%s", this.capitalize(name)), Map.of(name, value), null)
+                            .addStatement(new AssignmentExpression(new VariableExpression(name, true),
+                                    new VariableExpression(name, false)))
+                            .build();
+
+                    classBuilder
+                            .addMethod(Modifier.PUBLIC, String.format("get%s", this.capitalize(name)), Map.of(), value)
+                            .addStatement(new ReturnStatement(new VariableExpression(name, true)))
+                            .build();
+                });
 
                 // Add generate class to generated classes map
                 this.getLogger().info("Generated class '{}' from project '{}'", className, project.projectName());
@@ -144,7 +169,6 @@ public class JavaCodeGenTask extends DefaultTask {
                 if (exportAttribute == null)
                     continue;
 
-                
             }
         }
     }
@@ -157,6 +181,10 @@ public class JavaCodeGenTask extends DefaultTask {
     @Input
     public @NotNull Property<String> getBasePackage() {
         return this.basePackage;
+    }
+
+    private @NotNull String capitalize(@NotNull final String string) {
+        return string.substring(0, 1).toUpperCase() + string.substring(1);
     }
 
 }
