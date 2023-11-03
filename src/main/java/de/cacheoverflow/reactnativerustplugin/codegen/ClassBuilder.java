@@ -47,7 +47,7 @@ public class ClassBuilder {
         this.internalClassBuilder.repeat("   ", this.scopeStack.size());
         this.pushScope(EnumScopeType.FIELD);
         this.internalClassBuilder.append(Modifier.toString(modifier)).append(" ").append(type).append(" ").append(name)
-                .append(";");
+                .append(";\n");
         this.popScope();
     }
 
