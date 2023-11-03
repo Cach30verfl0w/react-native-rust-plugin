@@ -5,6 +5,7 @@ import org.gradle.api.Project;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
@@ -21,6 +22,15 @@ public class PathHelper {
                 .map(path -> Paths.get(path).resolve(file))
                 .filter(path -> Files.exists(path) && Files.isRegularFile(path))
                 .findFirst();
+    }
+
+    public static void writeFile(@NotNull final Path path, @NotNull String content) {
+        try {
+            Files.writeString(path, content);
+        } catch (IOException ex) {
+            throw new GradleException(String.format("Unable to write file '%s' with %s bytes content",
+                    path.toAbsolutePath(), content.getBytes(StandardCharsets.UTF_8).length));
+        }
     }
 
     public static void deleteDirectory(@NotNull final Project project, @NotNull final Path path) {

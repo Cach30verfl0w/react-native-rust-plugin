@@ -1,7 +1,10 @@
 package de.cacheoverflow.reactnativerustplugin.tasks;
 
+import de.cacheoverflow.reactnativerustplugin.codegen.ClassBuilder;
+import de.cacheoverflow.reactnativerustplugin.codegen.Modifier;
 import de.cacheoverflow.reactnativerustplugin.codegen.TypeMapper;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
+import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustAttribute;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFile;
@@ -18,12 +21,11 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class JavaCodeGenTask extends DefaultTask {
+
+    public static final String JNI_EXPORT_ATTR_NAME = "jni_export";
 
     private final List<Path> moduleFolders = new ArrayList<>();
     private final Property<String> basePackage;
@@ -56,13 +58,15 @@ public class JavaCodeGenTask extends DefaultTask {
                 final String structPath = String.format("%s::%s", project.projectName().replace("-", "_"), struct.name());
 
                 // Skip struct if no jni_import attribute found
-                if (struct.attributes().stream().map(RustAttribute::name).noneMatch(name -> name.equals("jni_export"))) {
+                if (struct.attributes().stream().map(RustAttribute::name).noneMatch(name -> name
+                        .equals(JavaCodeGenTask.JNI_EXPORT_ATTR_NAME))) {
                     this.getLogger().warn("Skipping {} because of missing jni_export attribute", structPath);
                     continue;
                 }
 
                 // Get name of java class/type
-                final String javaName = struct.attributes().stream().filter(attr -> attr.name().equals("jni_export"))
+                final String javaName = struct.attributes().stream().filter(attr -> attr.name()
+                                .equals(JavaCodeGenTask.JNI_EXPORT_ATTR_NAME))
                         .map(attr -> attr.parameters().get("class")).filter(Objects::nonNull).findFirst().orElse(null);
                 if (javaName == null)
                     throw new AnalyzerException("Illegal jni_export attribute => Missing class name in definition");
@@ -86,7 +90,44 @@ public class JavaCodeGenTask extends DefaultTask {
 
         // Generate Java classes from Struct structures
         this.getLogger().info("Generate Java classes from Rust structures");
-        
+        final Map<String, String> generatedClasses = new HashMap<>();
+        for (final RustProject project : sourceFileAnalyzer.getProjects()) {
+            // Enumerate all structs in project
+            for (final RustStruct struct : project.files().stream().map(RustFile::structs).flatMap(Collection::stream)
+                    .toList()) {
+                // Filter not exported structures
+                final RustAttribute exportAttribute = struct.attributes().stream()
+                        .filter(attr -> attr.name().equals(JavaCodeGenTask.JNI_EXPORT_ATTR_NAME))
+                        .findFirst().orElse(null);
+                if (exportAttribute == null)
+                    continue;
+
+                // Avoid collisions in class generation
+                final String className = exportAttribute.parameters().get("class").replace("\"", "");
+                if ( generatedClasses.containsKey(className))
+                    throw new CodeGenerationException("Unable to generate class '%s' => Class was already created", className);
+
+                // Generate class builder by struct
+                final ClassBuilder classBuilder = new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className, null, List.of());
+                for (Map.Entry<String, String> field : struct.parameters().entrySet()) {
+                    classBuilder.addField(Modifier.PUBLIC, field.getKey(), typeMapper.map(field.getValue()));
+                }
+
+                // Add generate class to generated classes map
+                this.getLogger().info("Generated class '{}' from project '{}'", className, project.projectName());
+                generatedClasses.put(className, classBuilder.build());
+            }
+        }
+
+        // Inform the user about the generation and write generated classes to specified directories
+        this.getLogger().info("Generated {} class as Wrapper for Rust structs", generatedClasses.size());
+        for (final Map.Entry<String, String> classEntry : generatedClasses.entrySet()) {
+            final Path classPath = generatedSourceFolder.resolve(String.format("%s.java", classEntry.getKey()
+                    .replace(".", "/")));
+            PathHelper.createDirectoryIfNotExists(this.getProject(), classPath.getParent());
+            PathHelper.writeFile(classPath, classEntry.getValue());
+            this.getLogger().info("Successfully wrote class '{}' into '{}'", classEntry.getKey(), classPath.toAbsolutePath());
+        }
     }
 
     @Input
