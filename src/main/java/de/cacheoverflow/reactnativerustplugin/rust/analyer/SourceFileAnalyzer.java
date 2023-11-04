@@ -45,7 +45,7 @@ public final class SourceFileAnalyzer {
             throw new AnalyzerProjectException("Directory '%s' isn't a Cargo Project (Cargo.toml is missing)", directory);
 
         // Read Cargo.toml
-        String packageName = null;
+        String packageName;
         final List<String> dependencies = new ArrayList<>();
         try (FileConfig fileConfig = FileConfig.of(cargoFile)) {
             fileConfig.load();
@@ -118,6 +118,41 @@ public final class SourceFileAnalyzer {
         }
     }
 
+    public void reformatFunctions(@NotNull final TypeMapper typeMapper) {
+        this.logger.info("Reformat function arguments from pathless function types to path-ful types (Function Prepare Pass)");
+        for (RustProject project : this.projects) {
+            for (RustFile file : project.files()) {
+                final List<RustFunction> newFunctions = new ArrayList<>();
+                for (RustFunction function : file.functions()) {
+                    this.logger.info("Modifying types in function '{}' ({}) -> {}", function.functionName(),
+                            function.parameters().entrySet().stream().map(entry -> String.format("%s: %s", entry.getKey(),
+                                            entry.getValue()))
+                            .collect(Collectors.joining(", ")), function.returnType().orElse("void"));
+
+                    // Enumerate all parameters in function
+                    for (final Map.Entry<String, String> parameter : function.parameters().entrySet()) {
+                        // Only modify type name when name isn't already specified with path
+                        if (!parameter.getValue().contains("::")) {
+                            // Replace type names with new type names
+                            function.parameters().put(parameter.getKey(), this.reformatType(typeMapper, parameter.getValue(),
+                                    project.projectName(), file));
+                        }
+                    }
+                    newFunctions.add(new RustFunction(function.attributes(), function.functionName(), function.parameters(),
+                            function.returnType().map(type -> this.reformatType(typeMapper, type, project.projectName(), file))));
+
+                    // Send information to user
+                    this.logger.info("Finished type modification in struct '{}' ({}) -> {}", function.functionName(), function
+                            .parameters().entrySet().stream().map(entry -> String.format("%s: %s", entry.getKey(),
+                                    entry.getValue())), function.returnType().orElse("void"));
+                }
+
+                file.functions().clear();
+                file.functions().addAll(newFunctions);
+            }
+        }
+    }
+
     public void renameStructs() {
         this.logger.info("Rename structures from pathless struct names to path struct names (Struct Prepare Pass)");
         for (RustProject project : this.projects) {
@@ -152,43 +187,46 @@ public final class SourceFileAnalyzer {
 
                     // Enumerate all parameters in struct
                     for (Map.Entry<String, String> parameter : struct.parameters().entrySet()) {
-                        // Skip default types
-                        if (typeMapper.isDefaultType(parameter.getValue())) {
-                            struct.parameters().put(parameter.getKey(), parameter.getValue());
-                            continue;
-                        }
-
                         // Only modify type name when name isn't already specified with path
                         if (!parameter.getValue().contains("::")) {
-                            // Generate type name with path
-                            String type = file.imports().stream()
-                                    .map(importString -> new AbstractMap.SimpleEntry<>(importString.substring(importString
-                                            .lastIndexOf("::") + 2), importString))
-                                    .filter(entry -> entry.getKey().equals(parameter.getValue()))
-                                    .map(AbstractMap.SimpleEntry::getValue)
-                                    .findFirst().orElse(null);
-
-                            // If there is no imported path, default to own struct
-                            if (type == null)
-                                type = String.format("%s::%s::%s", project.projectName().replace("-", "_"), file.path(),
-                                        parameter.getValue());
-
-                            // If there is no naming, set type to type decl before
-                            if (type == null)
-                                type = parameter.getValue();
-
                             // Replace type names with new type names
-                            struct.parameters().put(parameter.getKey(), type);
+                            struct.parameters().put(parameter.getKey(), this.reformatType(typeMapper, parameter.getValue(),
+                                    project.projectName(), file));
                         }
                     }
 
                     // Send information to user
                     this.logger.info("Finished type modification in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
                             .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue())));
-
                 }
             }
         }
+    }
+
+    private @NotNull String reformatType(@NotNull final TypeMapper mapper, @NotNull final String rustType,
+                                         @NotNull final String projectName, @NotNull final RustFile file) {
+        // Skip default types
+        if (mapper.isDefaultTypeRust(rustType)) {
+            return rustType;
+        }
+
+        // Generate type name with path
+        String type = file.imports().stream()
+                .map(importString -> new AbstractMap.SimpleEntry<>(importString.substring(importString
+                        .lastIndexOf("::") + 2), importString))
+                .filter(entry -> entry.getKey().equals(rustType))
+                .map(AbstractMap.SimpleEntry::getValue)
+                .findFirst().orElse(null);
+
+        // If there is no imported path, default to own struct
+        if (type == null)
+            type = String.format("%s::%s::%s", projectName.replace("-", "_"), file.path(), rustType);
+
+        // If there is no naming, set type to type decl before
+        if (type == null)
+            type = rustType;
+
+        return type;
     }
 
     private @NotNull String getRustModulePath(@NotNull final Path sourceDirectory, @NotNull final Path child) {

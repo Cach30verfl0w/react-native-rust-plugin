@@ -71,8 +71,15 @@ public class TypeMapper {
         return javaType;
     }
 
-    public boolean isDefaultType(@NotNull final String rustType) {
+    public boolean isDefaultTypeRust(@NotNull final String rustType) {
         return Optional.ofNullable(this.mappings.get(rustType)).map(Pair::getSecond).orElse(false);
     }
+
+    public boolean isDefaultTypeJava(@NotNull final String javaType) {
+        return this.mappings.values().stream().filter(stringBooleanPair -> stringBooleanPair.getFirst().equals(javaType))
+                .map(Pair::getSecond)
+                .findFirst().orElse(false);
+    }
+
 
 }

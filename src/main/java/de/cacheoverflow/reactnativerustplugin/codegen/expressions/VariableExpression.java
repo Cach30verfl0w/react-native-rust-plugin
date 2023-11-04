@@ -17,4 +17,8 @@ public class VariableExpression implements IExpression {
         return (this.isThis ? "this." : "") + this.name;
     }
 
+    public @NotNull String getName() {
+        return name;
+    }
+
 }

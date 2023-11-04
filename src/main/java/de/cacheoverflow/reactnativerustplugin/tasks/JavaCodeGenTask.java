@@ -9,7 +9,7 @@ import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.*;
-import de.cacheoverflow.reactnativerustplugin.utils.ReverseHelper;
+import de.cacheoverflow.reactnativerustplugin.utils.MapHelper;
 import de.cacheoverflow.reactnativerustplugin.utils.PathHelper;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -22,14 +22,12 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class JavaCodeGenTask extends DefaultTask {
 
     public static final String JNI_EXPORT_ATTR_NAME = "jni_export";
-
-    // TODO: 1. Generate Code for fromMap and toMap in structure classes
-    // TODO: 2. Mapping from Structure to WriteableMap and from ReadableMap to Structure
 
     private final List<Path> moduleFolders = new ArrayList<>();
     private final Property<String> basePackage;
@@ -52,6 +50,7 @@ public class JavaCodeGenTask extends DefaultTask {
         // Adjust names for following passes
         final TypeMapper typeMapper = new TypeMapper();
         sourceFileAnalyzer.renameStructs();
+        sourceFileAnalyzer.reformatFunctions(typeMapper);
         sourceFileAnalyzer.reformatTypes(typeMapper);
 
         // Generate Type Mapping
@@ -180,7 +179,7 @@ public class JavaCodeGenTask extends DefaultTask {
                 }
 
                 // Map types for parameters
-                final Map<String, String> parameters = ReverseHelper.reversed(function.parameters().entrySet().stream()
+                final Map<String, String> parameters = MapHelper.reversed(function.parameters().entrySet().stream()
                         .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), typeMapper.map(entry.getValue())))
                         .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
 
@@ -190,19 +189,32 @@ public class JavaCodeGenTask extends DefaultTask {
                         parameters, mappedReturnType).build();
 
                 // Generate mapper method
-                final Map<String, String> mapperParameters = new HashMap<>();
+                final Map<String, String> mapperParameters = new LinkedHashMap<>();
                 mapperParameters.put("promise", "com.facebook.react.bridge.Promise");
-                mapperParameters.putAll(parameters);
+                mapperParameters.putAll(MapHelper.replaceAllValues(parameters,
+                        Predicate.not(typeMapper::isDefaultTypeJava), "com.facebook.react.bridge.ReadableMap"));
                 final MethodBuilder wrapperBuilder = classBuilder.addMethod(Modifier.PUBLIC, function.functionName(),
-                        mapperParameters, "void", List.of("com.facebook.react.bridge.ReactMethod"));
+                        mapperParameters,
+                        "void", List.of("com.facebook.react.bridge.ReactMethod"));
 
                 // Generate mapper method body
-                final List<IExpression> callParameters = new ArrayList<>(parameters.keySet().stream()
-                        .map(parameter -> (IExpression) new VariableExpression(parameter, false))
+                final List<IExpression> callParameters = new ArrayList<>(parameters.entrySet().stream()
+                        .map(parameter -> {
+                            if (typeMapper.isDefaultTypeJava(parameter.getValue())) {
+                                return new VariableExpression(parameter.getKey(), false);
+                            } else {
+                                return new CallExpression(parameter.getValue() + ".fromMap",
+                                        List.of(new VariableExpression(parameter.getKey(), false)));
+                            }
+                        })
                         .toList());
 
+                // Get return type and default information
+                final boolean returnTypeDefault = function.returnType().map(typeMapper::isDefaultTypeRust).orElse(true);
+
+                // Generate function content
                 final CallExpression functionCallExpression = new CallExpression(classNameNoPackage + "." +
-                        function.functionName(), callParameters);
+                        function.functionName(), callParameters, returnTypeDefault ? "" : ".toMap()");
                 if (function.returnType().isPresent()) {
                     wrapperBuilder.addStatement(new CallExpression("promise.resolve", List.of(functionCallExpression)));
                 } else {
@@ -258,7 +270,7 @@ public class JavaCodeGenTask extends DefaultTask {
         struct.parameters().forEach((name, type) -> {
             final String javaType = typeMapper.map(type);
 
-            if (typeMapper.isDefaultType(type)) {
+            if (typeMapper.isDefaultTypeRust(type)) {
                 parametersForBuild.add(new CallExpression(String.format("map.get%s", this.capitalize(javaType)),
                         List.of(new ValueExpression(name))));
             } else {
@@ -280,7 +292,7 @@ public class JavaCodeGenTask extends DefaultTask {
         struct.parameters().forEach((name, type) -> {
             final String javaType = typeMapper.map(type);
 
-            if (typeMapper.isDefaultType(type)) {
+            if (typeMapper.isDefaultTypeRust(type)) {
                 toMapBuilder.addStatement(new CallExpression(String.format("map.put%s", this.capitalize(javaType)),
                         List.of(new VariableExpression(name, true), new ValueExpression(name))));
             } else {
