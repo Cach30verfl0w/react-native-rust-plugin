@@ -11,6 +11,8 @@ public class TypeMapper {
 
     public TypeMapper() {
         // Rust Type Mappings
+        this.registerIfNotExists("String", "String");
+
         this.registerIfNotExists("i32", "int");
         this.registerIfNotExists("i64", "long");
         this.registerIfNotExists("i8", "byte");
@@ -53,10 +55,13 @@ public class TypeMapper {
     }
 
     public @NotNull String map(@NotNull final String rustType) {
+        if (rustType.equals("void"))
+            return rustType;
+
         String javaType = this.mappings.get(rustType);
-        if (javaType == null) {
+        if (javaType == null)
             throw new IllegalArgumentException(String.format("No mapping found for %s", rustType));
-        }
+
         return javaType;
     }
 

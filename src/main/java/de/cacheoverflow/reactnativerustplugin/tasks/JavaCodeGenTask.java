@@ -4,14 +4,12 @@ import de.cacheoverflow.reactnativerustplugin.codegen.ClassBuilder;
 import de.cacheoverflow.reactnativerustplugin.codegen.MethodBuilder;
 import de.cacheoverflow.reactnativerustplugin.codegen.Modifier;
 import de.cacheoverflow.reactnativerustplugin.codegen.TypeMapper;
-import de.cacheoverflow.reactnativerustplugin.codegen.expressions.AssignmentExpression;
-import de.cacheoverflow.reactnativerustplugin.codegen.expressions.ReturnStatement;
-import de.cacheoverflow.reactnativerustplugin.codegen.expressions.ValueExpression;
-import de.cacheoverflow.reactnativerustplugin.codegen.expressions.VariableExpression;
+import de.cacheoverflow.reactnativerustplugin.codegen.expressions.*;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.SourceFileAnalyzer;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.*;
+import de.cacheoverflow.reactnativerustplugin.utils.ReverseHelper;
 import de.cacheoverflow.reactnativerustplugin.utils.PathHelper;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -94,7 +92,7 @@ public class JavaCodeGenTask extends DefaultTask {
         // Generate Java classes from Struct structures
         this.getLogger().info("Generate Java classes from Rust structures");
 
-        final Map<String, String> generatedClasses = new HashMap<>();
+        final Map<String, ClassBuilder> generatedClasses = new HashMap<>();
         for (final RustProject project : sourceFileAnalyzer.getProjects()) {
             // Enumerate all structs in project
             for (final RustStruct struct : project.files().stream().map(RustFile::structs).flatMap(Collection::stream)
@@ -120,14 +118,14 @@ public class JavaCodeGenTask extends DefaultTask {
                 mappedParameters.forEach((name, value) -> classBuilder.addField(Modifier.PUBLIC, name, value));
 
                 MethodBuilder methodBuilder = classBuilder.addConstructor(Modifier.PUBLIC, mappedParameters);
-                mappedParameters.forEach((name, value) -> methodBuilder.addStatement(new AssignmentExpression(
+                mappedParameters.forEach((name, value) -> methodBuilder.addStatement(new AssignmentStatement(
                         new VariableExpression(name, true), new VariableExpression(name, false))));
                 methodBuilder.build();
 
                 mappedParameters.forEach((name, value) -> {
                     classBuilder
                             .addMethod(Modifier.PUBLIC, String.format("set%s", this.capitalize(name)), Map.of(name, value), null)
-                            .addStatement(new AssignmentExpression(new VariableExpression(name, true),
+                            .addStatement(new AssignmentStatement(new VariableExpression(name, true),
                                     new VariableExpression(name, false)))
                             .build();
 
@@ -139,23 +137,25 @@ public class JavaCodeGenTask extends DefaultTask {
 
                 // Add generate class to generated classes map
                 this.getLogger().info("Generated class '{}' from project '{}'", className, project.projectName());
-                generatedClasses.put(className, classBuilder.build());
+                generatedClasses.put(className, classBuilder);
             }
         }
 
         // Inform the user about the generation and write generated classes to specified directories
-        this.getLogger().info("Generated {} class as Wrapper for Rust structs", generatedClasses.size());
+        this.getLogger().info("Generated {} classes as Wrapper for Rust structs", generatedClasses.size());
 
-        for (final Map.Entry<String, String> classEntry : generatedClasses.entrySet()) {
+        for (final Map.Entry<String, ClassBuilder> classEntry : generatedClasses.entrySet()) {
             final Path classPath = generatedSourceFolder.resolve(String.format("%s.java", classEntry.getKey()
                     .replace(".", "/")));
             PathHelper.createDirectoryIfNotExists(this.getProject(), classPath.getParent());
-            PathHelper.writeFile(classPath, classEntry.getValue());
+            PathHelper.writeFile(classPath, classEntry.getValue().build());
             this.getLogger().info("Successfully wrote class '{}' into '{}'", classEntry.getKey(), classPath.toAbsolutePath());
         }
 
-        // Generate package classes for mapping between Rust and Java functions
+        // Generate module classes for mapping between Rust and Java functions
+        generatedClasses.clear();
         this.getLogger().info("Generate Rust mapping classes as React Native modules");
+
 
         for (final RustProject project : sourceFileAnalyzer.getProjects()) {
             // Enumerate all functions in project
@@ -169,7 +169,86 @@ public class JavaCodeGenTask extends DefaultTask {
                 if (exportAttribute == null)
                     continue;
 
+                // Get name of class and check if class builder is already present
+                final String className = exportAttribute.parameters().get("class").replace("\"", "");
+                final boolean isClassBuilderAlreadyPresent = generatedClasses.containsKey(className);
+
+                // Get class builder if present, otherwise create new class builder
+                final ClassBuilder classBuilder = generatedClasses.entrySet().stream()
+                        .filter(entry -> entry.getKey().equals(className))
+                        .map(Map.Entry::getValue)
+                        .findFirst()
+                        .orElse(new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className + "Module", null,
+                                List.of("com.facebook.react.bridge.ReactContextBaseJavaModule")));
+
+                // Generate constructor and getName method if necessary
+                final String classNameNoPackage = className.replace(className.substring(0, className.lastIndexOf('.') + 1), "");
+                if (!isClassBuilderAlreadyPresent) {
+                    // Generate constructor
+                    final Map<String, String> params = Map.of("context", "com.facebook.react.bridge.ReactApplicationContext");
+                    classBuilder
+                            .addConstructor(Modifier.PUBLIC, params)
+                            .addStatement(new CallExpression("super", List.of(new VariableExpression("context", false))))
+                            .build();
+
+                    // Generate getName method
+                    classBuilder
+                            .addMethod(Modifier.PUBLIC, "getName", Map.of(), "String")
+                            .addStatement(new ReturnStatement(new ValueExpression(classNameNoPackage)))
+                            .build();
+                }
+
+                // Map types for parameters
+                final Map<String, String> parameters = ReverseHelper.reversed(function.parameters().entrySet().stream()
+                        .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), typeMapper.map(entry.getValue())))
+                        .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
+
+                // Generate native method
+                final String mappedReturnType = typeMapper.map(function.returnType().orElse("void"));
+                classBuilder.addMethod(Modifier.PUBLIC | Modifier.STATIC | Modifier.NATIVE, function.functionName(),
+                        parameters, mappedReturnType).build();
+
+                // Generate mapper method
+                final Map<String, String> mapperParameters = new HashMap<>();
+                mapperParameters.put("promise", "com.facebook.react.bridge.Promise");
+                mapperParameters.putAll(parameters);
+                final MethodBuilder wrapperBuilder = classBuilder.addMethod(Modifier.PUBLIC, function.functionName(),
+                        mapperParameters, "void");
+
+                // Generate mapper method body
+                final List<IExpression> callParameters = new ArrayList<>(parameters.keySet().stream()
+                        .map(parameter -> (IExpression) new VariableExpression(parameter, false))
+                        .toList());
+
+                final CallExpression functionCallExpression = new CallExpression(classNameNoPackage + "." +
+                        function.functionName(), callParameters);
+                if (function.returnType().isPresent()) {
+                    wrapperBuilder.addStatement(new CallExpression("promise.resolve", List.of(functionCallExpression)));
+                } else {
+                    wrapperBuilder.addStatement(functionCallExpression);
+                    wrapperBuilder.addStatement(new CallExpression("promise.resolve", List.of(new ValueExpression(null))));
+                }
+
+                // Finish method generation
+                wrapperBuilder.build();
+
+                // Save class builder in map if necessary
+                if (!isClassBuilderAlreadyPresent) {
+                    generatedClasses.put(className, classBuilder);
+                }
             }
+        }
+
+
+        // Inform the user about the generation and write generated classes to specified directories
+        this.getLogger().info("Generated {} classes as Wrapper for Rust functions", generatedClasses.size());
+
+        for (final Map.Entry<String, ClassBuilder> classEntry : generatedClasses.entrySet()) {
+            final Path classPath = generatedSourceFolder.resolve(String.format("%s.java", classEntry.getKey()
+                    .replace(".", "/")));
+            PathHelper.createDirectoryIfNotExists(this.getProject(), classPath.getParent());
+            PathHelper.writeFile(classPath, classEntry.getValue().build());
+            this.getLogger().info("Successfully wrote class '{}' into '{}'", classEntry.getKey(), classPath.toAbsolutePath());
         }
     }
 

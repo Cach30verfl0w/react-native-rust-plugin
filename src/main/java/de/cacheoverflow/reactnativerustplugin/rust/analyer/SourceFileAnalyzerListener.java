@@ -39,7 +39,8 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
         Map<String, String> parameters = new HashMap<>();
         if (context.functionParameters() != null) {
             for (RustParser.FunctionParamContext parameterContext : context.functionParameters().functionParam()) {
-                parameters.put(parameterContext.functionParamPattern().getText(), parameterContext.type_().getText());
+                parameters.put(parameterContext.functionParamPattern().pattern().getText(), parameterContext.functionParamPattern()
+                        .type_().getText());
             }
         }
 

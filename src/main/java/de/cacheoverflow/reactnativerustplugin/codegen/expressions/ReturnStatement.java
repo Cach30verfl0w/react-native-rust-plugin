@@ -2,7 +2,7 @@ package de.cacheoverflow.reactnativerustplugin.codegen.expressions;
 
 import org.jetbrains.annotations.NotNull;
 
-public class ReturnStatement implements IStatement {
+public class ReturnStatement implements IExpression {
 
     private final IExpression expression;
 

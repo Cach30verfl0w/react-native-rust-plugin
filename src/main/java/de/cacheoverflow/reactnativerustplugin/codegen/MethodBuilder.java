@@ -1,6 +1,6 @@
 package de.cacheoverflow.reactnativerustplugin.codegen;
 
-import de.cacheoverflow.reactnativerustplugin.codegen.expressions.IStatement;
+import de.cacheoverflow.reactnativerustplugin.codegen.expressions.IExpression;
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,11 +36,11 @@ public class MethodBuilder {
             this.internalMethodBuilder.replace(lastParameterEnd, lastParameterEnd + 2, "");
         }
 
-        this.internalMethodBuilder.append(") ");
+        this.internalMethodBuilder.append(")");
         if (!Modifier.has(access, Modifier.NATIVE)) {
             this.classBuilder.pushScope(ClassBuilder.EnumScopeType.FUNCTION);
-            this.internalMethodBuilder.append("{\n");
-        } else this.internalMethodBuilder.append(";\n");
+            this.internalMethodBuilder.append(" {\n");
+        } else this.internalMethodBuilder.append(";\n\n");
     }
 
     MethodBuilder(@NotNull final ClassBuilder classBuilder, final int access,
@@ -71,10 +71,10 @@ public class MethodBuilder {
         } else this.internalMethodBuilder.append(";\n");
     }
 
-    public @NotNull MethodBuilder addStatement(@NotNull final IStatement statement) {
+    public @NotNull MethodBuilder addStatement(@NotNull final IExpression expression) {
         this.internalMethodBuilder
                 .repeat("    ", this.classBuilder.scopeStack.size())
-                .append(statement).append(";\n");
+                .append(expression).append(";\n");
         return this;
     }
 
