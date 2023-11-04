@@ -5,6 +5,7 @@ import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -14,13 +15,17 @@ public class MethodBuilder {
     private final ClassBuilder classBuilder;
 
     MethodBuilder(@NotNull final ClassBuilder classBuilder, final int access,
-                         @NotNull final String name, @NotNull final Map<String, String> parameters,
-                         @Nullable String returnType) {
+                  @NotNull final String name, @NotNull final Map<String, String> parameters,
+                  @Nullable String returnType, @NotNull final List<String> annotations) {
         this.classBuilder = classBuilder;
         ClassBuilder.EnumScopeType currentScope = this.classBuilder.scopeStack.peek();
         if (currentScope != ClassBuilder.EnumScopeType.CLASS)
             throw new CodeGenerationException("Expected scope 'CLASS', but got '%s'", currentScope);
 
+        for (String annotation : annotations) {
+            this.internalMethodBuilder.repeat("    ", this.classBuilder.scopeStack.size());
+            this.internalMethodBuilder.append("@").append(annotation).append("\n");
+        }
         this.internalMethodBuilder.repeat("    ", this.classBuilder.scopeStack.size());
         this.internalMethodBuilder.append(Modifier.toString(access)).append(" ")
                 .append(Optional.ofNullable(returnType).orElse("void")).append(" ").append(name);
@@ -41,6 +46,12 @@ public class MethodBuilder {
             this.classBuilder.pushScope(ClassBuilder.EnumScopeType.FUNCTION);
             this.internalMethodBuilder.append(" {\n");
         } else this.internalMethodBuilder.append(";\n\n");
+    }
+
+    MethodBuilder(@NotNull final ClassBuilder classBuilder, final int access,
+                         @NotNull final String name, @NotNull final Map<String, String> parameters,
+                         @Nullable String returnType) {
+        this(classBuilder, access, name, parameters, returnType, List.of());
     }
 
     MethodBuilder(@NotNull final ClassBuilder classBuilder, final int access,

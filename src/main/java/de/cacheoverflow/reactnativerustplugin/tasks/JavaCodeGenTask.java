@@ -216,7 +216,7 @@ public class JavaCodeGenTask extends DefaultTask {
                 mapperParameters.put("promise", "com.facebook.react.bridge.Promise");
                 mapperParameters.putAll(parameters);
                 final MethodBuilder wrapperBuilder = classBuilder.addMethod(Modifier.PUBLIC, function.functionName(),
-                        mapperParameters, "void");
+                        mapperParameters, "void", List.of("com.facebook.react.bridge.ReactMethod"));
 
                 // Generate mapper method body
                 final List<IExpression> callParameters = new ArrayList<>(parameters.keySet().stream()

@@ -54,6 +54,13 @@ public class ClassBuilder {
 
     public @NotNull MethodBuilder addMethod(final int modifier, @NotNull final String name,
                                             @NotNull final Map<String, String> parameter,
+                                            @Nullable final String returnType,
+                                            @NotNull final List<String> annotations) {
+        return new MethodBuilder(this, modifier, name, parameter, returnType, annotations);
+    }
+
+    public @NotNull MethodBuilder addMethod(final int modifier, @NotNull final String name,
+                                            @NotNull final Map<String, String> parameter,
                                             @Nullable final String returnType) {
         return new MethodBuilder(this, modifier, name, parameter, returnType);
     }
