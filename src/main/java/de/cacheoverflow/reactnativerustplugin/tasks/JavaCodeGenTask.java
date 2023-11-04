@@ -28,6 +28,9 @@ public class JavaCodeGenTask extends DefaultTask {
 
     public static final String JNI_EXPORT_ATTR_NAME = "jni_export";
 
+    // TODO: 1. Generate Code for fromMap and toMap in structure classes
+    // TODO: 2. Mapping from Structure to WriteableMap and from ReadableMap to Structure
+
     private final List<Path> moduleFolders = new ArrayList<>();
     private final Property<String> basePackage;
 
