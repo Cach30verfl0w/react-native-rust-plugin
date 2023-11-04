@@ -250,7 +250,7 @@ public class JavaCodeGenTask extends DefaultTask {
         methodBuilder.build();
 
         // Generate fromMap method
-        MethodBuilder fromMapBuilder = classBuilder.addMethod(Modifier.PUBLIC, "fromMap",
+        MethodBuilder fromMapBuilder = classBuilder.addMethod(Modifier.PUBLIC | Modifier.STATIC, "fromMap",
                 Map.of("map", "com.facebook.react.bridge.ReadableMap"), className);
 
         // Collect parameters for constructor call
@@ -271,6 +271,27 @@ public class JavaCodeGenTask extends DefaultTask {
         fromMapBuilder.addStatement(new ReturnStatement(new CallExpression("new " + className, parametersForBuild)));
         fromMapBuilder.build();
 
+        // Generate toMap method
+        MethodBuilder toMapBuilder = classBuilder.addMethod(Modifier.PUBLIC, "toMap",
+                Map.of(), "com.facebook.react.bridge.ReadableMap");
+        toMapBuilder.addStatement(new AssignmentStatement(new VariableExpression("final WritableMap map", false),
+                new CallExpression("new com.facebook.react.bridge.WritableNativeMap", List.of())));
+
+        struct.parameters().forEach((name, type) -> {
+            final String javaType = typeMapper.map(type);
+
+            if (typeMapper.isDefaultType(type)) {
+                toMapBuilder.addStatement(new CallExpression(String.format("map.put%s", this.capitalize(javaType)),
+                        List.of(new VariableExpression(name, true), new ValueExpression(name))));
+            } else {
+                final IExpression getMapExpression = new CallExpression("this." + name + ".toMap", List.of());
+                toMapBuilder.addStatement(new CallExpression("map.putMap", List.of(getMapExpression)));
+            }
+        });
+
+        toMapBuilder.addStatement(new ReturnStatement(new VariableExpression("map", true)));
+        toMapBuilder.build();
+
         // Apply getter and setter for fields
         mappedParameters.forEach((name, value) -> {
             classBuilder
@@ -284,8 +305,6 @@ public class JavaCodeGenTask extends DefaultTask {
                     .addStatement(new ReturnStatement(new VariableExpression(name, true)))
                     .build();
         });
-
-        // TODO: Convert to writable map function
 
         return classBuilder;
     }
