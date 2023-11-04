@@ -50,12 +50,12 @@ public class JavaCodeGenTask extends DefaultTask {
         }
 
         // Adjust names for following passes
+        final TypeMapper typeMapper = new TypeMapper();
         sourceFileAnalyzer.renameStructs();
-        sourceFileAnalyzer.reformatTypes();
+        sourceFileAnalyzer.reformatTypes(typeMapper);
 
         // Generate Type Mapping
         this.getLogger().info("Generate Type Mappings");
-        final TypeMapper typeMapper = new TypeMapper();
         for (final RustProject project : sourceFileAnalyzer.getProjects()) {
             final var structs = project.files().stream().map(RustFile::structs).flatMap(Collection::stream).toList();
             for (RustStruct struct : structs) {
@@ -114,29 +114,7 @@ public class JavaCodeGenTask extends DefaultTask {
                     throw new CodeGenerationException("Unable to generate class '%s' => Class was already created", className);
 
                 // Generate class builder by struct
-                final ClassBuilder classBuilder = new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className, null, List.of());
-                final Map<String, String> mappedParameters = struct.parameters().entrySet().stream()
-                        .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), typeMapper.map(entry.getValue())))
-                        .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
-                mappedParameters.forEach((name, value) -> classBuilder.addField(Modifier.PUBLIC, name, value));
-
-                MethodBuilder methodBuilder = classBuilder.addConstructor(Modifier.PUBLIC, mappedParameters);
-                mappedParameters.forEach((name, value) -> methodBuilder.addStatement(new AssignmentStatement(
-                        new VariableExpression(name, true), new VariableExpression(name, false))));
-                methodBuilder.build();
-
-                mappedParameters.forEach((name, value) -> {
-                    classBuilder
-                            .addMethod(Modifier.PUBLIC, String.format("set%s", this.capitalize(name)), Map.of(name, value), null)
-                            .addStatement(new AssignmentStatement(new VariableExpression(name, true),
-                                    new VariableExpression(name, false)))
-                            .build();
-
-                    classBuilder
-                            .addMethod(Modifier.PUBLIC, String.format("get%s", this.capitalize(name)), Map.of(), value)
-                            .addStatement(new ReturnStatement(new VariableExpression(name, true)))
-                            .build();
-                });
+                final ClassBuilder classBuilder = this.generateStructClass(typeMapper, struct, className);
 
                 // Add generate class to generated classes map
                 this.getLogger().info("Generated class '{}' from project '{}'", className, project.projectName());
@@ -253,6 +231,63 @@ public class JavaCodeGenTask extends DefaultTask {
             PathHelper.writeFile(classPath, classEntry.getValue().build());
             this.getLogger().info("Successfully wrote class '{}' into '{}'", classEntry.getKey(), classPath.toAbsolutePath());
         }
+    }
+
+    private @NotNull ClassBuilder generateStructClass(@NotNull final TypeMapper typeMapper,
+                                                            @NotNull final RustStruct struct, @NotNull final String className) {
+        final ClassBuilder classBuilder = new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className, null, List.of());
+
+        // Map fields for types
+        final Map<String, String> mappedParameters = struct.parameters().entrySet().stream()
+                .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), typeMapper.map(entry.getValue())))
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
+        mappedParameters.forEach((name, value) -> classBuilder.addField(Modifier.PUBLIC, name, value));
+
+        // Generate constructor for class
+        MethodBuilder methodBuilder = classBuilder.addConstructor(Modifier.PUBLIC, mappedParameters);
+        mappedParameters.forEach((name, ignored) -> methodBuilder.addStatement(new AssignmentStatement(
+                new VariableExpression(name, true), new VariableExpression(name, false))));
+        methodBuilder.build();
+
+        // Generate fromMap method
+        MethodBuilder fromMapBuilder = classBuilder.addMethod(Modifier.PUBLIC, "fromMap",
+                Map.of("map", "com.facebook.react.bridge.ReadableMap"), className);
+
+        // Collect parameters for constructor call
+        final List<IExpression> parametersForBuild = new ArrayList<>();
+        struct.parameters().forEach((name, type) -> {
+            final String javaType = typeMapper.map(type);
+
+            if (typeMapper.isDefaultType(type)) {
+                parametersForBuild.add(new CallExpression(String.format("map.get%s", this.capitalize(javaType)),
+                        List.of(new ValueExpression(name))));
+            } else {
+                final IExpression getMapExpression = new CallExpression("map.getMap", List.of(new ValueExpression(name)));
+                parametersForBuild.add(new CallExpression(javaType + ".fromMap", List.of(getMapExpression)));
+            }
+        });
+
+        // Emit constructor call and finish build
+        fromMapBuilder.addStatement(new ReturnStatement(new CallExpression("new " + className, parametersForBuild)));
+        fromMapBuilder.build();
+
+        // Apply getter and setter for fields
+        mappedParameters.forEach((name, value) -> {
+            classBuilder
+                    .addMethod(Modifier.PUBLIC, String.format("set%s", this.capitalize(name)), Map.of(name, value), null)
+                    .addStatement(new AssignmentStatement(new VariableExpression(name, true),
+                            new VariableExpression(name, false)))
+                    .build();
+
+            classBuilder
+                    .addMethod(Modifier.PUBLIC, String.format("get%s", this.capitalize(name)), Map.of(), value)
+                    .addStatement(new ReturnStatement(new VariableExpression(name, true)))
+                    .build();
+        });
+
+        // TODO: Convert to writable map function
+
+        return classBuilder;
     }
 
     @Input

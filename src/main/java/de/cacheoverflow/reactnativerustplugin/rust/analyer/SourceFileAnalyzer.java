@@ -3,6 +3,7 @@ package de.cacheoverflow.reactnativerustplugin.rust.analyer;
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.UnmodifiableConfig;
 import com.electronwill.nightconfig.core.file.FileConfig;
+import de.cacheoverflow.reactnativerustplugin.codegen.TypeMapper;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerProjectException;
 import de.cacheoverflow.reactnativerustplugin.rust.analyer.data.RustFile;
@@ -139,36 +140,53 @@ public final class SourceFileAnalyzer {
         }
     }
 
-    public void reformatTypes() {
+    public void reformatTypes(@NotNull final TypeMapper typeMapper) {
         this.logger.info("Reformat types from pathless type declarations to path type declarations (Type Prepare Pass)");
-        for (RustFile file : this.projects.stream().map(RustProject::files).flatMap(Collection::stream).toList()) {
-            for (RustStruct struct : file.structs()) {
-                // Send information to user
-                this.logger.info("Modifying types in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
-                        .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
-                        .collect(Collectors.joining(", ")));
+        for (RustProject project : this.projects) {
+            for (RustFile file : project.files()) {
+                for (RustStruct struct : file.structs()) {
+                    // Send information to user
+                    this.logger.info("Modifying types in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
+                            .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
+                            .collect(Collectors.joining(", ")));
 
-                // Enumerate all parameters in struct
-                for (Map.Entry<String, String> parameter : struct.parameters().entrySet()) {
-                    // Only modify type name when name isn't already specified with path
-                    if (!parameter.getValue().contains("::")) {
-                        // Generate type name with path
-                        String type = file.imports().stream()
-                                .map(importString -> new AbstractMap.SimpleEntry<>(importString.substring(importString
-                                        .lastIndexOf("::") + 2), importString))
-                                .filter(entry -> entry.getKey().equals(parameter.getValue()))
-                                .map(AbstractMap.SimpleEntry::getValue)
-                                .findFirst().orElse(parameter.getValue());
+                    // Enumerate all parameters in struct
+                    for (Map.Entry<String, String> parameter : struct.parameters().entrySet()) {
+                        // Skip default types
+                        if (typeMapper.isDefaultType(parameter.getValue())) {
+                            struct.parameters().put(parameter.getKey(), parameter.getValue());
+                            continue;
+                        }
 
-                        // Replace type names with new type names
-                        struct.parameters().put(parameter.getKey(), type);
+                        // Only modify type name when name isn't already specified with path
+                        if (!parameter.getValue().contains("::")) {
+                            // Generate type name with path
+                            String type = file.imports().stream()
+                                    .map(importString -> new AbstractMap.SimpleEntry<>(importString.substring(importString
+                                            .lastIndexOf("::") + 2), importString))
+                                    .filter(entry -> entry.getKey().equals(parameter.getValue()))
+                                    .map(AbstractMap.SimpleEntry::getValue)
+                                    .findFirst().orElse(null);
+
+                            // If there is no imported path, default to own struct
+                            if (type == null)
+                                type = String.format("%s::%s::%s", project.projectName().replace("-", "_"), file.path(),
+                                        parameter.getValue());
+
+                            // If there is no naming, set type to type decl before
+                            if (type == null)
+                                type = parameter.getValue();
+
+                            // Replace type names with new type names
+                            struct.parameters().put(parameter.getKey(), type);
+                        }
                     }
-                }
 
-                // Send information to user
-                this.logger.info("Finished type modification in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
-                        .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
-                        .collect(Collectors.joining(", ")));
+                    // Send information to user
+                    this.logger.info("Finished type modification in struct '{}' ({})", struct.name(), struct.parameters().entrySet()
+                            .stream().map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue())));
+
+                }
             }
         }
     }
