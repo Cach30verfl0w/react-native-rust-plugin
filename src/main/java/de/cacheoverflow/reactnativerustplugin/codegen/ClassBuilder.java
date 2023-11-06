@@ -4,6 +4,7 @@ import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -46,7 +47,7 @@ public class ClassBuilder {
         this.pushScope(EnumScopeType.CLASS);
     }
 
-    public void addField(final byte modifier, @NotNull final String name, @NotNull final String type) {
+    public void addField(final int modifier, @NotNull final String name, @NotNull final String type) {
         this.internalClassBuilder.repeat("    ", this.scopeStack.size());
         this.internalClassBuilder.append(Modifier.toString(modifier)).append(" ").append(type).append(" ").append(name)
                 .append(";\n\n");

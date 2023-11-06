@@ -5,6 +5,7 @@ import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,7 +43,7 @@ public class MethodBuilder {
         }
 
         this.internalMethodBuilder.append(")");
-        if (!Modifier.has(access, Modifier.NATIVE)) {
+        if (!Modifier.isNative(access)) {
             this.classBuilder.pushScope(ClassBuilder.EnumScopeType.FUNCTION);
             this.internalMethodBuilder.append(" {\n");
         } else this.internalMethodBuilder.append(";\n\n");
@@ -76,7 +77,7 @@ public class MethodBuilder {
         }
 
         this.internalMethodBuilder.append(") ");
-        if (!Modifier.has(access, Modifier.NATIVE)) {
+        if (!Modifier.isNative(access)) {
             this.classBuilder.pushScope(ClassBuilder.EnumScopeType.FUNCTION);
             this.internalMethodBuilder.append("{\n");
         } else this.internalMethodBuilder.append(";\n");

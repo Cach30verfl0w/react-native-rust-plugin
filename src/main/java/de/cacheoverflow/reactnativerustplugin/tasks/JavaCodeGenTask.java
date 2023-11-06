@@ -2,7 +2,6 @@ package de.cacheoverflow.reactnativerustplugin.tasks;
 
 import de.cacheoverflow.reactnativerustplugin.codegen.ClassBuilder;
 import de.cacheoverflow.reactnativerustplugin.codegen.MethodBuilder;
-import de.cacheoverflow.reactnativerustplugin.codegen.Modifier;
 import de.cacheoverflow.reactnativerustplugin.codegen.TypeMapper;
 import de.cacheoverflow.reactnativerustplugin.codegen.expressions.*;
 import de.cacheoverflow.reactnativerustplugin.exception.AnalyzerException;
@@ -20,6 +19,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Predicate;
@@ -246,7 +246,7 @@ public class JavaCodeGenTask extends DefaultTask {
     }
 
     private @NotNull ClassBuilder generateStructClass(@NotNull final TypeMapper typeMapper,
-                                                            @NotNull final RustStruct struct, @NotNull final String className) {
+                                                      @NotNull final RustStruct struct, @NotNull final String className) {
         final ClassBuilder classBuilder = new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className, null, List.of());
 
         // Map fields for types
