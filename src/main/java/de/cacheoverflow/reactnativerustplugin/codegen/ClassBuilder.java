@@ -71,6 +71,10 @@ public class ClassBuilder {
         return new MethodBuilder(this, modifier, parameter);
     }
 
+    public @NotNull MethodBuilder addStaticConstructor() {
+        return new MethodBuilder(this);
+    }
+
     public @NotNull String build() {
         final EnumScopeType scope = this.popScope();
         if (scope != EnumScopeType.CLASS) {

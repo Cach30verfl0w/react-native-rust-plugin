@@ -56,6 +56,17 @@ public class MethodBuilder {
         this(classBuilder, access, name, parameters, returnType, List.of());
     }
 
+    MethodBuilder(@NotNull final ClassBuilder classBuilder) {
+        this.classBuilder = classBuilder;
+        ClassBuilder.EnumScopeType currentScope = this.classBuilder.scopeStack.peek();
+        if (currentScope != ClassBuilder.EnumScopeType.CLASS)
+            throw new CodeGenerationException("Expected scope 'CLASS', but got '%s'", currentScope);
+
+        StringHelper.repeat(this.internalMethodBuilder, "    ", this.classBuilder.scopeStack.size());
+        this.classBuilder.pushScope(ClassBuilder.EnumScopeType.FUNCTION);
+        this.internalMethodBuilder.append("static {\n");
+    }
+
     MethodBuilder(@NotNull final ClassBuilder classBuilder, final int access,
                   @NotNull final Map<String, String> parameters) {
         this.classBuilder = classBuilder;

@@ -244,6 +244,67 @@ public class JavaCodeGenTask extends DefaultTask {
             PathHelper.writeFile(classPath, classEntry.getValue().build());
             this.getLogger().info("Successfully wrote class '{}' into '{}'", classEntry.getKey(), classPath.toAbsolutePath());
         }
+
+        // Get modules names
+        final List<String> modules = sourceFileAnalyzer.getProjects().stream()
+                .map(RustProject::files).flatMap(Collection::stream)
+                .map(RustFile::functions).flatMap(Collection::stream)
+                .map(function -> {
+                    for (RustAttribute attribute : function.attributes()) {
+                        if (!attribute.name().contains(JavaCodeGenTask.JNI_EXPORT_ATTR_NAME))
+                            continue;
+
+                        return attribute.parameters().get("class");
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        // Generate package class
+        final List<String> projectNames = sourceFileAnalyzer.getProjects().stream().map(RustProject::projectName).toList();
+        this.generatePackageClass(basePackage.get() + ".generated", generatedSourceFolder, modules, projectNames);
+    }
+
+    private void generatePackageClass(@NotNull final String basePackage, @NotNull final Path root,
+                                      @NotNull final List<String> modules,
+                                      @NotNull final List<String> projects) {
+        // Generate class
+        final String name = basePackage + ".GeneratedPackage";
+        final ClassBuilder classBuilder = new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, name, null,
+                List.of("com.facebook.react.ReactPackage"));
+
+        // Generate static constructor
+        final MethodBuilder staticConstructorBuilder = classBuilder.addStaticConstructor();
+        for (final String project : projects) {
+            staticConstructorBuilder.addStatement(new CallExpression("System.loadLibrary",
+                    List.of(new ValueExpression(project.replace("-", "_")))));
+        }
+        staticConstructorBuilder.build();
+
+        // Generate createNativeModules method
+        final List<IExpression> callExpressions = modules.stream()
+                .map(className -> new CallExpression("new " + className.replace("\"", ""),
+                        List.of(new VariableExpression("context", false))))
+                .collect(Collectors.toList());
+
+        classBuilder.addMethod(Modifier.PUBLIC, "createNativeModules",
+                        Map.of("context", "com.facebook.react.bridge.ReactApplicationContext"),
+                        "java.util.List<com.facebook.react.bridge.NativeModule>", List.of("Override"))
+                .addStatement(new ReturnStatement(new CallExpression("java.util.Arrays.asList", callExpressions)))
+                .build();
+
+        // Generate createViewManagers method
+        classBuilder.addMethod(Modifier.PUBLIC, "createViewManagers",
+                Map.of("context", "com.facebook.react.bridge.ReactApplicationContext"),
+                "java.util.List<com.facebook.react.uimanager.ViewManager>", List.of("Override"))
+                .addStatement(new ReturnStatement(new CallExpression("java.util.Collections.emptyList", List.of())))
+                .build();
+
+        // Write class
+        PathHelper.createDirectoryIfNotExists(this.getProject(), root);
+        PathHelper.writeFile(root.resolve(name.replace(".", "/") + ".java"), classBuilder.build());
+
     }
 
     private @NotNull ClassBuilder generateStructClass(@NotNull final TypeMapper typeMapper,
