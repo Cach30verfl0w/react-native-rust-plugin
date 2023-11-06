@@ -42,7 +42,7 @@ public class NativeBundleTask extends DefaultTask {
                             "[\"staticlib\", \"cdylib\"] and name attribute to your Cargo.toml", rustLibraryFile.toAbsolutePath()));
 
                 // Get path on Android project side
-                final Path javaLibraryFile = targetLibraries.resolve(String.format("%s.so", fileName));
+                final Path javaLibraryFile = targetLibraries.resolve(String.format("lib%s.so", fileName));
                 PathHelper.createFileIfNotExists(this.getProject(), javaLibraryFile);
 
                 try {
