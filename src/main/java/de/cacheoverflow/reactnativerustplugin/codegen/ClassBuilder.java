@@ -1,6 +1,7 @@
 package de.cacheoverflow.reactnativerustplugin.codegen;
 
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
+import de.cacheoverflow.reactnativerustplugin.utils.StringHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -48,7 +49,7 @@ public class ClassBuilder {
     }
 
     public void addField(final int modifier, @NotNull final String name, @NotNull final String type) {
-        this.internalClassBuilder.repeat("    ", this.scopeStack.size());
+        StringHelper.repeat(this.internalClassBuilder, "    ", this.scopeStack.size());
         this.internalClassBuilder.append(Modifier.toString(modifier)).append(" ").append(type).append(" ").append(name)
                 .append(";\n\n");
     }
@@ -85,7 +86,8 @@ public class ClassBuilder {
     }
 
     @NotNull EnumScopeType popScope() {
-        this.internalClassBuilder.repeat("    ", this.scopeStack.size() - 1).append("}\n\n");
+        StringHelper.repeat(this.internalClassBuilder, "    ", this.scopeStack.size() - 1);
+        this.internalClassBuilder.append("}\n\n");
         return this.scopeStack.pop();
     }
 

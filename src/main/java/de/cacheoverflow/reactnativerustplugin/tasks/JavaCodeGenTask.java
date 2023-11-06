@@ -158,8 +158,8 @@ public class JavaCodeGenTask extends DefaultTask {
                         .filter(entry -> entry.getKey().equals(className))
                         .map(Map.Entry::getValue)
                         .findFirst()
-                        .orElse(new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className + "Module", null,
-                                List.of("com.facebook.react.bridge.ReactContextBaseJavaModule")));
+                        .orElse(new ClassBuilder(Modifier.PUBLIC | Modifier.FINAL, className,
+                                "com.facebook.react.bridge.ReactContextBaseJavaModule", List.of()));
 
                 // Generate constructor and getName method if necessary
                 final String classNameNoPackage = className.replace(className.substring(0, className.lastIndexOf('.') + 1), "");
@@ -180,6 +180,7 @@ public class JavaCodeGenTask extends DefaultTask {
 
                 // Map types for parameters
                 final Map<String, String> parameters = MapHelper.reversed(function.parameters().entrySet().stream()
+                        .filter(entry -> !entry.getValue().endsWith("JNIEnv") && !entry.getValue().endsWith("JClass"))
                         .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), typeMapper.map(entry.getValue())))
                         .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
 
@@ -286,22 +287,24 @@ public class JavaCodeGenTask extends DefaultTask {
         // Generate toMap method
         MethodBuilder toMapBuilder = classBuilder.addMethod(Modifier.PUBLIC, "toMap",
                 Map.of(), "com.facebook.react.bridge.ReadableMap");
-        toMapBuilder.addStatement(new AssignmentStatement(new VariableExpression("final WritableMap map", false),
-                new CallExpression("new com.facebook.react.bridge.WritableNativeMap", List.of())));
+        toMapBuilder.addStatement(new AssignmentStatement(
+                new VariableExpression("final com.facebook.react.bridge.WritableMap map", false),
+                new CallExpression("new com.facebook.react.bridge.WritableNativeMap", List.of()))
+        );
 
         struct.parameters().forEach((name, type) -> {
             final String javaType = typeMapper.map(type);
 
             if (typeMapper.isDefaultTypeRust(type)) {
                 toMapBuilder.addStatement(new CallExpression(String.format("map.put%s", this.capitalize(javaType)),
-                        List.of(new VariableExpression(name, true), new ValueExpression(name))));
+                        List.of(new ValueExpression(name), new VariableExpression(name, false))));
             } else {
                 final IExpression getMapExpression = new CallExpression("this." + name + ".toMap", List.of());
                 toMapBuilder.addStatement(new CallExpression("map.putMap", List.of(getMapExpression)));
             }
         });
 
-        toMapBuilder.addStatement(new ReturnStatement(new VariableExpression("map", true)));
+        toMapBuilder.addStatement(new ReturnStatement(new VariableExpression("map", false)));
         toMapBuilder.build();
 
         // Apply getter and setter for fields

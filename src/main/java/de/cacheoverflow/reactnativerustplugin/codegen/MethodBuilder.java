@@ -2,6 +2,7 @@ package de.cacheoverflow.reactnativerustplugin.codegen;
 
 import de.cacheoverflow.reactnativerustplugin.codegen.expressions.IExpression;
 import de.cacheoverflow.reactnativerustplugin.exception.CodeGenerationException;
+import de.cacheoverflow.reactnativerustplugin.utils.StringHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,10 +25,10 @@ public class MethodBuilder {
             throw new CodeGenerationException("Expected scope 'CLASS', but got '%s'", currentScope);
 
         for (String annotation : annotations) {
-            this.internalMethodBuilder.repeat("    ", this.classBuilder.scopeStack.size());
+            StringHelper.repeat(this.internalMethodBuilder, "    ", this.classBuilder.scopeStack.size());
             this.internalMethodBuilder.append("@").append(annotation).append("\n");
         }
-        this.internalMethodBuilder.repeat("    ", this.classBuilder.scopeStack.size());
+        StringHelper.repeat(this.internalMethodBuilder, "    ", this.classBuilder.scopeStack.size());
         this.internalMethodBuilder.append(Modifier.toString(access)).append(" ")
                 .append(Optional.ofNullable(returnType).orElse("void")).append(" ").append(name);
 
@@ -62,7 +63,7 @@ public class MethodBuilder {
         if (currentScope != ClassBuilder.EnumScopeType.CLASS)
             throw new CodeGenerationException("Expected scope 'CLASS', but got '%s'", currentScope);
 
-        this.internalMethodBuilder.repeat("    ", this.classBuilder.scopeStack.size());
+        StringHelper.repeat(this.internalMethodBuilder, "    ", this.classBuilder.scopeStack.size());
         this.internalMethodBuilder.append(Modifier.toString(access)).append(" ").append(classBuilder.className);
 
         // Commit arguments
@@ -84,9 +85,8 @@ public class MethodBuilder {
     }
 
     public @NotNull MethodBuilder addStatement(@NotNull final IExpression expression) {
-        this.internalMethodBuilder
-                .repeat("    ", this.classBuilder.scopeStack.size())
-                .append(expression).append(";\n");
+        StringHelper.repeat(this.internalMethodBuilder, "    ", this.classBuilder.scopeStack.size());
+        this.internalMethodBuilder.append(expression).append(";\n");
         return this;
     }
 

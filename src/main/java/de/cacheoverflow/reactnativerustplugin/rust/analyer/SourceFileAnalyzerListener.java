@@ -77,8 +77,8 @@ public class SourceFileAnalyzerListener extends RustParserBaseListener {
                 if (tokenTreeContext.tokenTreeToken().size() != 3)
                     continue;
 
-                parameters.put(tokenTreeContext.tokenTreeToken().getFirst().getText(),
-                        tokenTreeContext.tokenTreeToken().getLast().getText());
+                parameters.put(tokenTreeContext.tokenTreeToken().get(0).getText(),
+                        tokenTreeContext.tokenTreeToken().get(2).getText());
             }
         }
         this.attributeCache.add(new RustAttribute(context.attr().simplePath().getText(), parameters));
